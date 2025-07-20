@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:java="http://www.mulesoft.org/schema/mule/java"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/java http://www.mulesoft.org/schema/mule/java/current/mule-java.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="d847fa5b-5f33-4ecd-91de-98091e4502b4" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<file:config name="File_Config" doc:name="File Config" doc:id="5a515f3f-1021-4fe6-a3bb-adbcec10be20" >
+		<file:connection workingDir="#[Mule::p('app.home')]" />
+	</file:config>
+	<flow name="htmltopdfjavaFlow" doc:id="66dc4199-1ab9-4ce1-acf8-ce785c103a24" >
+		<http:listener doc:name="Listener" doc:id="6209ef0c-738d-4ed8-916b-49893555a355" config-ref="HTTP_Listener_config" path="/getPdf"/>
+		<set-variable value="Saurav" doc:name="name" doc:id="b1550d96-4bf7-49d2-a0ab-3452a6fe11f5" variableName="name"/>
+		<set-variable value="${app.home}/sample1.pdf" doc:name="filePath" doc:id="2e2fc001-8d9d-41a1-a814-d2e1ec85d931" variableName="filePath"/>
+		<parse-template doc:name="Parse Template" doc:id="f9b9f6c1-0982-4b45-8750-a1bea78bede8" outputMimeType="text/html">
+			<content >&lt;html&gt;
+&lt;head&gt;
+    &lt;style&gt;
+        #clientName, #date{
+                  font-size:22px;
+		  margin-top:50px;
+        }
+
+        #content-head{
+            line-height: 300%;
+        }
+        #content-subject{
+
+            font-size: 22px;
+        }
+        #container{
+            margin-left: 200px;
+            margin-right: 200px;
+            font-size: 22px;
+        }
+        #signature{
+            margin-top: 100px;
+            line-height: 2.8;
+        }
+        
+    &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    
+    &lt;div name=&quot;banner&quot; id=&quot;banner&quot; align=&quot;center&quot;&gt;&lt;h1&gt;&lt;u&gt;Consent Document&lt;/u&gt;&lt;/h1&gt;&lt;/div&gt;
+    &lt;div name=&quot;clientName&quot; id=&quot;clientName&quot; align=&quot;center&quot;&gt;&lt;b&gt;Account Holder&lt;/b&gt;: #[vars.name]&lt;/script&gt;&lt;/div&gt;
+    &lt;div name=&quot;date&quot; id=&quot;date&quot; align=&quot;center&quot;&gt;&lt;b&gt;Date&lt;/b&gt;: #[now() as Date]&lt;/div&gt;
+    &lt;div name=&quot;container&quot; id=&quot;container&quot;&gt;
+       
+        
+      
+        
+       &lt;div name='content-body' id=&quot;content-body&quot;&gt;  
+        
+       &lt;p&gt; By my signature below I, #[vars.name], hereby authorize ABC Financial Services to obtain a Background Check and/or Consumer Credit Report on me. I have attached the necessary documents, including my PAN card number and Bank Account number for the purpose of verification of my credit score.&lt;/p&gt;&lt;/div&gt;
+       &lt;div name=&quot;signature&quot; id=&quot;signature&quot;&gt;Signature &lt;br&gt;&lt;br&gt; #[vars.name])&lt;/div&gt;
+    &lt;/div&gt;
+
+&lt;/body&gt;
+
+&lt;/html&gt;</content>
+		</parse-template>
+		<java:invoke-static doc:id="ba919045-f2d5-403c-b94a-a5144fbd47e1" class="muledemoclass.App" method="createpdf(java.lang.String,java.lang.String)">
+			<java:args ><![CDATA[#[{
+	args: payload as String,
+	path: vars.filePath
+}]]]></java:args>
+		</java:invoke-static>
+		<file:write doc:name="Write" doc:id="060d06be-b0b4-4eed-ab9c-171f1d0245ee" config-ref="File_Config" path="/sample1.pdf"/>
+		<file:read doc:name="Read" doc:id="da424af3-2e69-49ee-8a80-277b342e58a4" config-ref="File_Config" path="/sample1.pdf"/>
+		<ee:transform doc:name="Transform Message" doc:id="a3381e15-b1eb-4a43-8341-7fa7ae320aee" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+import * from dw::core::Binaries
+
+var myPDFasBinary = toBase64(payload as Binary)
+output application/PDF with binary
+---
+fromBase64(myPDFasBinary as String) as Binary]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>
